@@ -3,8 +3,8 @@
 //! Responsibilities, all thin wiring over `app-core`:
 //!
 //! * build and `manage` the single [`AppState`] (the mutex-guarded session) with
-//!   the real [`SystemClock`] and a 15-minute idle timeout;
-//! * register the autostart + opener plugins;
+//!   the real [`SystemClock`] and the idle timeout loaded from the saved config;
+//! * register the single-instance guard + autostart plugin;
 //! * expose the `#[tauri::command]` surface (see [`commands`]);
 //! * stand up the tray icon (see [`tray`]), spawn the idle auto-lock driver
 //!   (see [`autolock_driver`]), and start the autofill IPC server the browser
@@ -25,13 +25,9 @@ mod tray;
 
 use std::time::Duration;
 
-use app_core::{resolve_vault_path, AppState, SystemClock};
-use tauri::WindowEvent;
+use app_core::{config, resolve_vault_path, AppState, SystemClock};
+use tauri::{Manager, WindowEvent};
 use tauri_plugin_autostart::MacosLauncher;
-
-/// Idle window before the vault auto-locks. Generous per the design doc; a future
-/// settings screen can make this user-configurable.
-const IDLE_TIMEOUT: Duration = Duration::from_secs(15 * 60);
 
 fn main() {
     // Resolve the on-disk vault path (creating the data dir). If this fails the
@@ -45,10 +41,22 @@ fn main() {
         }
     };
 
-    let state = AppState::new(vault_path, IDLE_TIMEOUT, Box::new(SystemClock));
+    // Load the persisted idle-timeout preference (defaults if absent).
+    let config_path = config::config_path_for_vault(&vault_path);
+    let idle_timeout = Duration::from_secs(config::load(&config_path).idle_timeout_secs);
+
+    let state = AppState::new(vault_path, idle_timeout, Box::new(SystemClock));
 
     tauri::Builder::default()
-        .plugin(tauri_plugin_opener::init())
+        // Single-instance MUST be registered first: a second launch focuses the
+        // already-running Core instead of starting a second one (which would
+        // fight over the autofill socket).
+        .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.show();
+                let _ = window.set_focus();
+            }
+        }))
         .plugin(tauri_plugin_autostart::init(
             // Start on login (per the design doc: the Core auto-starts so
             // autofill is available). No extra launch args.
@@ -86,6 +94,7 @@ fn main() {
             commands::update_entry,
             commands::delete_entry,
             commands::generate_password,
+            commands::set_idle_timeout,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Spooky-Pass");

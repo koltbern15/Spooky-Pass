@@ -32,7 +32,9 @@ impl AppState {
             SessionState::Locked => return false,
         };
 
-        if elapsed >= session.idle_timeout {
+        // A zero timeout means "never auto-lock" (lock only on quit / explicit
+        // lock); guard against it so we don't lock immediately on every tick.
+        if !session.idle_timeout.is_zero() && elapsed >= session.idle_timeout {
             session.do_lock()
         } else {
             false

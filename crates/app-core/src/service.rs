@@ -207,6 +207,23 @@ impl AppState {
         Self::persist(&mut session)
     }
 
+    /// Set the idle auto-lock timeout (in seconds) and persist it to the config
+    /// file beside the vault. Takes effect immediately for the running session.
+    /// `0` disables idle auto-lock (the vault still locks on quit / explicit
+    /// lock). Does not require an unlocked vault.
+    pub fn set_idle_timeout(&self, secs: u64) -> Result<StatusDto> {
+        let mut session = self.lock_session();
+        session.idle_timeout = std::time::Duration::from_secs(secs);
+        let config_path = crate::config::config_path_for_vault(&session.vault_path);
+        crate::config::save(
+            &config_path,
+            &crate::config::AppConfig {
+                idle_timeout_secs: secs,
+            },
+        )?;
+        Ok(Self::status_of(&session))
+    }
+
     // ---- internal helpers ----------------------------------------------------
 
     /// Acquire the session mutex, recovering from a poisoned lock rather than

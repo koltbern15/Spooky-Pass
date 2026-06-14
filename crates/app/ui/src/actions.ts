@@ -81,6 +81,7 @@ export interface Actions {
   deleteEntry(id: string): Promise<boolean>;
 
   generatePassword(options: GeneratorOptions): Promise<string | null>;
+  setIdleTimeout(secs: number): Promise<void>;
 }
 
 /**
@@ -213,6 +214,15 @@ export function createActions(onError?: (message: string) => void): Actions {
       } catch (err) {
         report(err);
         return null;
+      }
+    },
+
+    async setIdleTimeout(secs) {
+      try {
+        const status = await api.setIdleTimeout(secs);
+        store.set({ status });
+      } catch (err) {
+        report(err);
       }
     },
   };

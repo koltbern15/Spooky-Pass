@@ -40,4 +40,7 @@ export const api = {
 
   generatePassword: (options: GeneratorOptions): Promise<string> =>
     invoke("generate_password", { options }),
+
+  setIdleTimeout: (secs: number): Promise<Status> =>
+    invoke("set_idle_timeout", { secs }),
 };

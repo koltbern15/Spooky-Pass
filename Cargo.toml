@@ -46,7 +46,7 @@ directories = "5"
 tauri = { version = "2", features = ["tray-icon"] }
 tauri-build = "2"
 tauri-plugin-autostart = "2"
-tauri-plugin-opener = "2"
+tauri-plugin-single-instance = "2"
 
 # Phase 3 (autofill): registrable-domain matching via an embedded Public Suffix
 # List (`psl`), robust URL parsing (`url`), and a cross-platform local-socket
