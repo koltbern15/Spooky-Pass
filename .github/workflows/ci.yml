@@ -106,6 +106,27 @@ jobs:
       - name: Check the Tauri shell compiles
         run: cargo check -p spooky-pass-app
 
+  gui-windows:
+    name: gui (Windows build)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Build frontend (produces ui/dist for tauri-build)
+        working-directory: crates/app/ui
+        run: |
+          npm ci
+          npm run build
+      - name: Build the Tauri shell on Windows
+        # Windows needs icons/icon.ico for the exe resource and uses the MSVC +
+        # WebView2 toolchain (preinstalled on the runner). A full build exercises
+        # the resource embedding the Linux `gui` job can't.
+        run: cargo build -p spooky-pass-app
+
   audit:
     name: cargo audit (advisory)
     runs-on: ubuntu-latest
