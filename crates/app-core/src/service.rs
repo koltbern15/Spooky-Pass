@@ -4,8 +4,11 @@
 //! duration of the call (the lock is *never* held across an await — these methods
 //! are synchronous). Reads and mutations both refresh the activity timestamp so
 //! interacting with the app defers idle auto-lock; mutations additionally persist
-//! the vault to disk immediately via [`UnlockedVault::save_to_path`], so a crash
-//! can never lose a committed change.
+//! the vault to disk immediately via [`UnlockedVault::save_to_path`] (an atomic
+//! temp-file + rename), so a crash can never corrupt the vault or lose an
+//! already-persisted change. If a save itself fails, the error is returned to the
+//! caller; the in-memory vault keeps the change while disk does not, and the next
+//! successful save reconciles the two.
 //!
 //! Errors are mapped to [`AppError`] for the UI. In particular `unlock` collapses
 //! *every* failure — missing file aside — to [`AppError::WrongPassword`], so a
@@ -209,7 +212,11 @@ impl AppState {
     /// Acquire the session mutex, recovering from a poisoned lock rather than
     /// propagating the panic (we never leave the session in a broken invariant
     /// inside the guard).
-    fn lock_session(&self) -> MutexGuard<'_, Session> {
+    ///
+    /// `pub(crate)` so the auto-lock module shares this single, poison-recovering
+    /// acquisition: if any thread ever poisoned the mutex, an `.expect()` there
+    /// would kill the auto-lock driver and leave the vault unlocked forever.
+    pub(crate) fn lock_session(&self) -> MutexGuard<'_, Session> {
         self.inner.lock().unwrap_or_else(|e| e.into_inner())
     }
 

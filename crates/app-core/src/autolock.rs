@@ -22,7 +22,7 @@ impl AppState {
     /// idle_timeout`. The wall clock plays no part, so NTP steps and DST changes
     /// cannot prematurely (or belatedly) trip the lock.
     pub fn tick_autolock(&self) -> bool {
-        let mut session = self.inner.lock().expect("session mutex poisoned");
+        let mut session = self.lock_session();
 
         let elapsed = match &session.state {
             SessionState::Unlocked { last_activity, .. } => session
@@ -47,7 +47,7 @@ impl AppState {
     /// a future IPC/native-messaging layer that wants to mark the session active
     /// without performing a vault operation.
     pub fn touch(&self) {
-        let mut session = self.inner.lock().expect("session mutex poisoned");
+        let mut session = self.lock_session();
         let now = session.clock.now();
         if let SessionState::Unlocked { last_activity, .. } = &mut session.state {
             *last_activity = now;
