@@ -3,3 +3,10 @@
 
 # Cargo.lock IS committed for this workspace (it ships application/binary
 # crates and we want reproducible builds), so it is intentionally NOT ignored.
+
+# Frontend (crates/app/ui) build artifacts and dependencies
+crates/app/ui/node_modules/
+crates/app/ui/dist/
+
+# Tauri generated files
+crates/app/gen/
