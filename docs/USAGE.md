@@ -76,23 +76,36 @@ cd Spooky-Pass
 
 ### 3a. The desktop app (the Core)
 
-The frontend must be built first; Tauri embeds it.
+Use the **Tauri CLI** — it builds the web UI for you and (for `build`) embeds it
+into the executable. Install it once:
 
 ```sh
-# build the web UI
-cd crates/app/ui
-npm install
-npm run build          # produces crates/app/ui/dist/
-cd ../../..
-
-# build the app
-#   with the Tauri CLI (recommended — also produces installers):
-cargo tauri build      # bundles land in target/release/bundle/
-#   …or a plain dev build/run without the CLI (dist/ must already exist):
-cargo run -p spooky-pass-app --release
+cargo install tauri-cli --locked      # or: npm i -g @tauri-apps/cli
 ```
 
-The executable is named **`spooky-pass`** (`target/release/spooky-pass`).
+Then either **run it in development** (starts the UI dev server *and* the app —
+the quickest way to try it):
+
+```sh
+cargo tauri dev
+```
+
+…or **build a distributable installer** (embeds the UI; the installed app is
+standalone and needs no dev server):
+
+```sh
+cargo tauri build
+# installers land in target/release/bundle/
+#   Windows: msi/*.msi or nsis/*.exe   Linux: deb/ + appimage/   macOS: dmg/
+```
+
+> ⚠️ Don't run `cargo run -p spooky-pass-app` on its own — a plain cargo build is
+> a *dev* build that loads the UI from `http://localhost:1420`, so without the
+> Vite dev server running you'll get a blank "localhost refused to connect" page.
+> Use `cargo tauri dev` (which starts that server) or `cargo tauri build`.
+
+The produced executable is named **`spooky-pass`**
+(`target/release/spooky-pass`, `.exe` on Windows).
 
 ### 3b. The native-messaging host
 
@@ -124,10 +137,16 @@ cd ..
 
 ### 4a. Run the desktop app
 
-Launch `spooky-pass` (the binary from 3a, or the installed bundle). It opens the
-main window and adds a 🦇 **tray icon** (Open / Lock now / Quit). Closing the
-window **hides it to the tray** — the Core keeps running so autofill stays
-available. Quit fully from the tray menu.
+Launch it with **`cargo tauri dev`** (development), or — for everyday use —
+**install the bundle** produced by `cargo tauri build` (the `.msi`/`.exe` under
+`target/release/bundle/`) and start it from the Start menu / Applications. Either
+way it opens the main window and adds a 🦇 **tray icon** (Open / Lock now /
+Quit). Closing the window **hides it to the tray** — the Core keeps running so
+autofill stays available. Quit fully from the tray menu.
+
+> If you instead double-click the raw `target/release/spooky-pass` binary and see
+> a "localhost refused to connect" page, that binary was a *dev* build — use
+> `cargo tauri dev` or an installed `cargo tauri build` bundle instead (see 3a).
 
 ### 4b. Install the native-messaging host
 
