@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  check:
+    name: fmt + clippy + test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache cargo build
+        uses: Swatinem/rust-cache@v2
+
+      - name: Format check
+        run: cargo fmt --all -- --check
+
+      - name: Clippy (warnings = errors)
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+      - name: Test
+        # Each test may derive a key with 64 MiB Argon2, so cap parallelism to
+        # keep peak memory bounded (default is one thread per core).
+        run: cargo test --all -- --test-threads=2
+
+  audit:
+    name: cargo audit (advisory)
+    runs-on: ubuntu-latest
+    # Informational for now: surfaces RUSTSEC advisories without blocking the
+    # merge. Promote to a required check once the advisory baseline is stable.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Audit dependencies
+        uses: rustsec/audit-check@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
