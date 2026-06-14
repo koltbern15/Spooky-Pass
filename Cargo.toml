@@ -1,13 +1,17 @@
 # Virtual workspace manifest for Spooky-Pass.
 #
-# Phase 1 ships only `crates/vault-core`. The following members are reserved
-# for later phases and intentionally NOT created yet:
-#   - crates/app          (Tauri desktop GUI + Core, Phase 2)
+# Phase 2 adds the desktop app:
+#   - crates/app-core  (pure-Rust app logic: session, auto-lock, services —
+#                       no Tauri dependency, builds & tests everywhere)
+#   - crates/app       (Tauri shell: commands, tray, window — needs a webview
+#                       toolchain, so it is built only in the `gui` CI job. Its
+#                       manifest adds it to `members` when that crate lands.)
+# Reserved for later phases:
 #   - crates/native-host  (native messaging host shim, Phase 3)
 #   - extension/          (TypeScript browser extension, Phase 4)
 [workspace]
 resolver = "2"
-members = ["crates/vault-core"]
+members = ["crates/vault-core", "crates/app-core"]
 
 [workspace.package]
 edition = "2021"
@@ -29,6 +33,18 @@ serde_json = "1"
 rand_core = { version = "0.6", features = ["getrandom"] }
 getrandom = "0.2"
 thiserror = "2"
+
+# Phase 2 (app-core): time handling and per-OS data directories.
+time = { version = "0.3", features = ["formatting", "macros"] }
+directories = "5"
+
+# Phase 2 (crates/app, Tauri shell). Declared here for a single source of
+# version truth; only the Tauri crate references them, so they are not fetched
+# or built by the GUI-independent crates.
+tauri = { version = "2", features = ["tray-icon"] }
+tauri-build = "2"
+tauri-plugin-autostart = "2"
+tauri-plugin-opener = "2"
 
 # Dev-only dependencies, also pinned at the workspace level.
 assert_matches = "1.5"
