@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "Spooky-Pass",
+  "version": "0.1.0",
+  "description": "Scary-good local-first autofill. Fill-on-click logins from your Spooky-Pass vault. 🦇",
+  "minimum_chrome_version": "120",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAymL7liQzHaCQbFget5RpqrSXvhff/0Kchy/Ulr0a526+Z+2790DmiIklk+Vd9sEmXf83XfmySAYeWmPYeMl0TvAGS3TqJwFHml1DkNZNZKufgwZChbjTx2oYGwDjo7qfpIe+T51TopxvY6KrNiodSfX7rwOzSgDSmNJ1q5Ob4YypVAko92nwCehlc5QaUtPT3o09jk+yJ5wNWoJP48avQX3oZ3sQtlIKcxxTJ46h9iH3WFRwfi35vOnnJ6S65Xuoz33PAqm1alvznOh9FSgsJOfJUTHj1Q6vKFgD6whAlDLX+kEfELrm0YYXpHr2eQBtY6LDTfDlvJ5J3nsAUIPSgwIDAQAB",
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "permissions": ["nativeMessaging", "activeTab", "scripting"],
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["content.js"],
+      "all_frames": true,
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_title": "Spooky-Pass",
+    "default_popup": "popup.html"
+  }
+}

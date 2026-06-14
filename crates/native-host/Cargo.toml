@@ -1,0 +1,28 @@
+[package]
+name = "spooky-pass-native-host"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Native-messaging host: a thin stdio<->IPC relay between the browser extension and the Spooky-Pass Core. Holds no vault and no key."
+
+# The relay logic lives in a library so it is unit-testable without a real
+# browser or a real Core socket; the binary is a thin `main` over it.
+[lib]
+name = "spooky_pass_host"
+path = "src/lib.rs"
+
+[[bin]]
+name = "spooky-pass-host"
+path = "src/main.rs"
+
+[dependencies]
+# Only for the frozen message contract types — the host holds no vault/key.
+spooky-pass-app-core = { path = "../app-core" }
+serde.workspace = true
+serde_json.workspace = true
+interprocess.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+assert_matches.workspace = true

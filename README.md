@@ -37,9 +37,17 @@ autofill. One vault, one source of truth.
 🚧 Early development. See **[DESIGN.md](./DESIGN.md)** for the full
 architecture, threat model, security design, and roadmap.
 
-**Phase 1 — `vault-core` (done):** the cryptographic core now exists at
-[`crates/vault-core`](./crates/vault-core). It implements the encrypted vault
-file format, Argon2id key derivation, XChaCha20-Poly1305 AEAD, the
-locked/unlocked typestate with entry CRUD, atomic save, and a CSPRNG-backed
-password generator — all unit- and integration-tested. The desktop app,
-native-messaging host, and browser extension are reserved for later phases.
+- **Phase 1 — `vault-core` ✅ done:** the cryptographic core
+  ([`crates/vault-core`](./crates/vault-core)) — encrypted vault file format,
+  Argon2id key derivation, XChaCha20-Poly1305 AEAD, the locked/unlocked
+  typestate with entry CRUD, atomic `0600` save, and a CSPRNG password
+  generator. Fully unit- and integration-tested.
+- **Phase 2 — desktop app ✅ done:** a Tauri Core + GUI built on a Tauri-free,
+  fully-tested [`crates/app-core`](./crates/app-core) (session model,
+  injectable-clock idle auto-lock, vault-file management, service layer) plus
+  the [`crates/app`](./crates/app) Tauri shell (commands, tray, autostart) and
+  a plain-TypeScript UI (create / unlock / search / edit / generate).
+- **Phase 3 — native-messaging host 🚧 in progress:** the bridge that lets the
+  browser reach the running Core.
+- **Phase 4 — Chromium extension 🚧 in progress:** login-form detection and
+  eTLD+1 / fill-on-click autofill for Brave & Vivaldi.

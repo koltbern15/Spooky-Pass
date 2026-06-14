@@ -30,6 +30,11 @@ pub mod paths;
 pub mod state;
 pub mod testing;
 
+// Autofill: the `contract` submodule holds the frozen IPC / native-messaging
+// message types (mirrored by `extension/src/protocol.ts`); the module also adds
+// the registrable-domain matching methods to `AppState`.
+pub mod autofill;
+
 // These modules add inherent methods to `AppState` (and the auto-lock decision
 // logic); they export no new types of their own.
 mod autolock;
@@ -40,5 +45,10 @@ pub use dto::{
     EntryInput, EntryPatchInput, EntrySummary, EntryView, GeneratorOptionsDto, StatusDto,
 };
 pub use error::{AppError, Result};
-pub use paths::resolve_vault_path;
+pub use paths::{autofill_socket_path, resolve_vault_path};
 pub use state::AppState;
+
+pub use autofill::contract::{
+    AutofillStatusDto, CredentialDto, IpcRequest, IpcResponse, MatchCandidate, RequestEnvelope,
+    ResponseEnvelope,
+};

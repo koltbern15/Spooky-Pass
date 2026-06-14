@@ -28,13 +28,13 @@ jobs:
         run: cargo fmt --all -- --check
 
       - name: Clippy (GUI-independent crates)
-        run: cargo clippy -p vault-core -p spooky-pass-app-core --all-targets -- -D warnings
+        run: cargo clippy -p vault-core -p spooky-pass-app-core -p spooky-pass-native-host --all-targets -- -D warnings
 
       - name: Test (GUI-independent crates)
         # The Tauri crate (spooky-pass-app) needs a webview toolchain and is
         # compiled in the `gui` job; select crates explicitly so this job never
         # tries to build it. Cap parallelism for the 64 MiB Argon2 KDF.
-        run: cargo test -p vault-core -p spooky-pass-app-core -- --test-threads=2
+        run: cargo test -p vault-core -p spooky-pass-app-core -p spooky-pass-native-host -- --test-threads=2
 
   frontend-types:
     name: frontend (typecheck + lint)
@@ -53,6 +53,27 @@ jobs:
       - name: Lint
         working-directory: crates/app/ui
         run: npm run lint
+
+  extension:
+    name: extension (typecheck + lint + build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        working-directory: extension
+        run: npm ci
+      - name: Type-check
+        working-directory: extension
+        run: npm run typecheck
+      - name: Lint
+        working-directory: extension
+        run: npm run lint
+      - name: Build
+        working-directory: extension
+        run: npm run build
 
   gui:
     name: gui (Tauri shell build)

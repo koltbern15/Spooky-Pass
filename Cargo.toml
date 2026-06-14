@@ -6,12 +6,14 @@
 #   - crates/app       (Tauri shell: commands, tray, window — needs a webview
 #                       toolchain, so it is built only in the `gui` CI job. Its
 #                       manifest adds it to `members` when that crate lands.)
-# Reserved for later phases:
-#   - crates/native-host  (native messaging host shim, Phase 3)
-#   - extension/          (TypeScript browser extension, Phase 4)
+# Phase 3 adds browser autofill:
+#   - crates/native-host  (native-messaging stdio<->Core-IPC relay; Tauri-free,
+#                          built & tested in the `core` CI job)
+#   - extension/          (MV3 Chromium extension; TypeScript, its own toolchain)
+# The Core (crates/app) gains a local-socket IPC server so the host can reach it.
 [workspace]
 resolver = "2"
-members = ["crates/vault-core", "crates/app-core", "crates/app"]
+members = ["crates/vault-core", "crates/app-core", "crates/app", "crates/native-host"]
 
 [workspace.package]
 edition = "2021"
@@ -45,6 +47,16 @@ tauri = { version = "2", features = ["tray-icon"] }
 tauri-build = "2"
 tauri-plugin-autostart = "2"
 tauri-plugin-opener = "2"
+
+# Phase 3 (autofill): registrable-domain matching via an embedded Public Suffix
+# List (`psl`), robust URL parsing (`url`), and a cross-platform local-socket
+# IPC transport (`interprocess`: Unix domain socket / Windows named pipe).
+psl = "2.1"
+url = "2.5"
+interprocess = "2"
+# Only the Core (crates/app) uses this, to set the autofill socket's Unix file
+# mode to 0600 (owner-only). Already in the tree transitively via interprocess.
+libc = "0.2"
 
 # Dev-only dependencies, also pinned at the workspace level.
 assert_matches = "1.5"

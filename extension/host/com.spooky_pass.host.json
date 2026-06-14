@@ -1,0 +1,7 @@
+{
+  "name": "com.spooky_pass.host",
+  "description": "Spooky-Pass native messaging host — thin stdio shim forwarding to the long-running Core.",
+  "path": "/REPLACE/WITH/ABSOLUTE/PATH/TO/spooky-pass-host",
+  "type": "stdio",
+  "allowed_origins": ["chrome-extension://mdefkabhkkpajkmoakenbfkchkhaffnc/"]
+}

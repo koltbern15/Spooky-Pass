@@ -23,3 +23,10 @@ tauri-plugin-opener.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 zeroize.workspace = true
+# Phase 3: the Core hosts the autofill IPC server (local socket) the native-host
+# relays to.
+interprocess.workspace = true
+
+# Unix-only: set the autofill socket's file mode to 0600 (owner-only).
+[target.'cfg(unix)'.dependencies]
+libc.workspace = true

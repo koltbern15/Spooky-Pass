@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Spooky-Pass</title>
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+      body {
+        margin: 0;
+        width: 260px;
+        font: 13px/1.5 system-ui, sans-serif;
+        background: #1b0a2a;
+        color: #f3e8ff;
+      }
+      header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 14px 8px;
+        font-size: 15px;
+        font-weight: 600;
+      }
+      .status {
+        padding: 0 14px 10px;
+      }
+      .badge {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 600;
+      }
+      .badge.ok {
+        background: #1f5135;
+        color: #b9f6ca;
+      }
+      .badge.warn {
+        background: #5a3a10;
+        color: #ffd27f;
+      }
+      .badge.err {
+        background: #5a1020;
+        color: #ffb3c1;
+      }
+      .hint {
+        margin: 6px 0 0;
+        font-size: 11px;
+        opacity: 0.75;
+      }
+      button {
+        width: calc(100% - 28px);
+        margin: 0 14px 14px;
+        padding: 8px 10px;
+        border: 0;
+        border-radius: 8px;
+        background: #7c3aed;
+        color: #fff;
+        font: inherit;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      button:disabled {
+        background: #3a2a52;
+        color: #9b8cb5;
+        cursor: not-allowed;
+      }
+    </style>
+  </head>
+  <body>
+    <header>🦇 Spooky-Pass</header>
+    <div class="status">
+      <span id="badge" class="badge warn">Checking…</span>
+      <p id="hint" class="hint"></p>
+    </div>
+    <button id="fill" disabled>Fill on this page</button>
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

@@ -239,7 +239,11 @@ impl AppState {
 
     /// Refresh `last_activity` to "now" (no-op if locked). Called inline while the
     /// session lock is already held, so it does not re-enter the mutex.
-    fn bump_activity(session: &mut Session) {
+    ///
+    /// `pub(crate)` so the autofill matching module shares this single
+    /// activity-bump implementation (a real `get_credential` fill is real use
+    /// and must defer idle auto-lock, exactly like a service read/mutation).
+    pub(crate) fn bump_activity(session: &mut Session) {
         let now = session.clock.now();
         if let SessionState::Unlocked { last_activity, .. } = &mut session.state {
             *last_activity = now;

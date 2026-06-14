@@ -14,6 +14,9 @@ use crate::error::AppError;
 /// The vault file name within the data directory.
 pub const VAULT_FILE_NAME: &str = "vault.spk";
 
+/// The local-socket file name used for the Core ↔ native-host IPC leg.
+pub const AUTOFILL_SOCKET_NAME: &str = "spooky-pass.sock";
+
 /// Resolve the absolute path to the vault file, creating the application data
 /// directory if necessary.
 ///
@@ -35,4 +38,46 @@ pub fn resolve_vault_path() -> Result<PathBuf, AppError> {
         .map_err(|e| AppError::Internal(format!("could not create data directory: {e}")))?;
 
     Ok(data_dir.join(VAULT_FILE_NAME))
+}
+
+/// Resolve the local-socket path the Core IPC server binds and the native-host
+/// connects to, for the `native-host ↔ Core` autofill leg.
+///
+/// ## Per-user, owner-only intent
+///
+/// This socket carries unlocked-vault traffic (including, on a successful
+/// `getCredential`, a password), so it must be reachable **only by the user who
+/// owns the running Core** — never world-accessible. Two layers enforce that:
+///
+/// * **Location.** We prefer `$XDG_RUNTIME_DIR` (e.g. `/run/user/<uid>`), which
+///   on Linux is a per-user `0700` tmpfs created by the login session — anything
+///   placed there is already private to the user. If it is unset (non-Linux, or
+///   a stripped environment) we fall back to the per-user application data
+///   directory from [`ProjectDirs`], which is likewise under the user's home.
+/// * **Permissions.** The *binder* (the Core, in `crates/app/src/ipc.rs`) is
+///   responsible for creating the socket owner-only (`0600` on Unix / a
+///   per-user named pipe on Windows); this helper only decides *where* it lives.
+///
+/// Returning a [`PathBuf`] (rather than an `interprocess` name) keeps app-core
+/// free of the `interprocess` dependency: both the Core and the native-host take
+/// this path and build their own local-socket name from it.
+///
+/// Unlike [`resolve_vault_path`] this never creates directories and never fails:
+/// `$XDG_RUNTIME_DIR` already exists when set, and the data-dir fallback is best
+/// effort (the binder surfaces any real bind error). If even `ProjectDirs`
+/// cannot be resolved we fall back to the OS temp dir so a path is always
+/// produced.
+pub fn autofill_socket_path() -> PathBuf {
+    if let Some(runtime_dir) = std::env::var_os("XDG_RUNTIME_DIR") {
+        let runtime_dir = PathBuf::from(runtime_dir);
+        if !runtime_dir.as_os_str().is_empty() {
+            return runtime_dir.join(AUTOFILL_SOCKET_NAME);
+        }
+    }
+
+    let base = ProjectDirs::from("dev", "SpookyPass", "SpookyPass")
+        .map(|dirs| dirs.data_dir().to_path_buf())
+        .unwrap_or_else(std::env::temp_dir);
+
+    base.join(AUTOFILL_SOCKET_NAME)
 }
