@@ -302,31 +302,61 @@ function renderAffordance(form: LoginForm, state: AffordanceState): void {
   }
 
   // state.kind === "fill"
-  const match = state.matches[0];
-  if (!match) {
+  if (state.matches.length === 0) {
     removeAffordance();
     return;
   }
 
-  const label = document.createElement("div");
-  label.textContent = `🦇 Fill ${match.username || match.title}`;
-  box.appendChild(label);
+  // Single match: the whole affordance is the fill target.
+  if (state.matches.length === 1) {
+    const match = state.matches[0];
+    if (!match) {
+      removeAffordance();
+      return;
+    }
+    const label = document.createElement("div");
+    label.textContent = `🦇 Fill ${match.username || match.title}`;
+    box.appendChild(label);
+    if (insecure) appendInsecureWarning(box);
+    // Fill-on-click: a single real user gesture triggers the credential request.
+    box.addEventListener("click", () => {
+      void fillFromMatch(form, match.id);
+    });
+    document.body.appendChild(box);
+    return;
+  }
 
-  if (state.matches.length > 1) {
-    const more = document.createElement("div");
-    more.textContent = `+${state.matches.length - 1} more in Spooky-Pass`;
-    more.style.opacity = "0.7";
-    more.style.fontSize = "11px";
-    box.appendChild(more);
+  // Multiple saved logins for this site: render a picker so every one is
+  // reachable (the Core returns all candidates). Each row is its own
+  // fill-on-click target.
+  box.style.cursor = "default";
+  const header = document.createElement("div");
+  header.textContent = "🦇 Choose a login to fill";
+  header.style.marginBottom = "4px";
+  box.appendChild(header);
+
+  for (const match of state.matches) {
+    const row = document.createElement("div");
+    row.textContent = match.username || match.title || "(no username)";
+    Object.assign(row.style, {
+      padding: "4px 6px",
+      borderRadius: "6px",
+      cursor: "pointer",
+    } satisfies Partial<CSSStyleDeclaration>);
+    row.addEventListener("mouseenter", () => {
+      row.style.background = "rgba(255,255,255,0.10)";
+    });
+    row.addEventListener("mouseleave", () => {
+      row.style.background = "transparent";
+    });
+    // Fill-on-click for this specific entry.
+    row.addEventListener("click", () => {
+      void fillFromMatch(form, match.id);
+    });
+    box.appendChild(row);
   }
 
   if (insecure) appendInsecureWarning(box);
-
-  // Fill-on-click: a single real user gesture triggers the credential request.
-  box.addEventListener("click", () => {
-    void fillFromMatch(form, match.id);
-  });
-
   document.body.appendChild(box);
 }
 

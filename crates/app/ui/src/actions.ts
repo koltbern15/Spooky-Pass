@@ -3,6 +3,7 @@
 // directly.
 
 import { api } from "./api";
+import { clearClipboard } from "./platform";
 import { store } from "./store";
 import type { Route } from "./store";
 import type {
@@ -80,6 +81,7 @@ export interface Actions {
   deleteEntry(id: string): Promise<boolean>;
 
   generatePassword(options: GeneratorOptions): Promise<string | null>;
+  setIdleTimeout(secs: number): Promise<void>;
 }
 
 /**
@@ -145,6 +147,8 @@ export function createActions(onError?: (message: string) => void): Actions {
     },
 
     async lock() {
+      // Wipe any password still pending on the clipboard when we lock.
+      void clearClipboard();
       try {
         const status = await api.lock();
         store.set({ status, route: "unlock", selectedId: null, entries: [] });
@@ -210,6 +214,15 @@ export function createActions(onError?: (message: string) => void): Actions {
       } catch (err) {
         report(err);
         return null;
+      }
+    },
+
+    async setIdleTimeout(secs) {
+      try {
+        const status = await api.setIdleTimeout(secs);
+        store.set({ status });
+      } catch (err) {
+        report(err);
       }
     },
   };

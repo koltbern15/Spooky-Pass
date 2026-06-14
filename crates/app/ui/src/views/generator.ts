@@ -10,7 +10,7 @@ import { createActions } from "../actions";
 import type { Actions } from "../actions";
 import type { AppState } from "../store";
 import type { GeneratorOptions } from "../types";
-import { copyToClipboard } from "../platform";
+import { copySecret } from "../platform";
 import { renderShell } from "./shell";
 
 export const DEFAULT_OPTIONS: GeneratorOptions = {
@@ -112,7 +112,7 @@ export function renderGeneratorWidget(opts: WidgetOptions = {}): HTMLElement {
           textContent: "Copy",
           onClick: () => {
             void (async () => {
-              if (current && (await copyToClipboard(current))) {
+              if (current && (await copySecret(current))) {
                 copiedFlash.textContent = "Copied!";
                 window.setTimeout(() => {
                   copiedFlash.textContent = "";

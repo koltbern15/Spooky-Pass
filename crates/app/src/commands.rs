@@ -94,3 +94,9 @@ pub fn generate_password(
 ) -> Result<String, AppError> {
     state.generate_password(options)
 }
+
+/// Set the idle auto-lock timeout (in seconds) and persist it. `0` = never.
+#[tauri::command]
+pub fn set_idle_timeout(state: State<'_, AppState>, secs: u64) -> Result<StatusDto, AppError> {
+    state.set_idle_timeout(secs)
+}

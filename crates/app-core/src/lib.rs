@@ -24,6 +24,7 @@
 #![forbid(unsafe_code)]
 
 pub mod clock;
+pub mod config;
 pub mod dto;
 pub mod error;
 pub mod paths;

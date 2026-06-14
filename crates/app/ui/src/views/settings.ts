@@ -29,6 +29,37 @@ export function renderSettings(
 
   const idleTimeout = state.status?.idleTimeoutSecs ?? 0;
 
+  const presets: Array<{ label: string; secs: number }> = [
+    { label: "1 minute", secs: 60 },
+    { label: "5 minutes", secs: 300 },
+    { label: "15 minutes", secs: 900 },
+    { label: "30 minutes", secs: 1800 },
+    { label: "1 hour", secs: 3600 },
+    { label: "Never (lock on quit)", secs: 0 },
+  ];
+  // Keep the current value selectable even if it isn't one of the presets.
+  if (!presets.some((p) => p.secs === idleTimeout)) {
+    presets.push({ label: formatTimeout(idleTimeout), secs: idleTimeout });
+  }
+
+  const timeoutSelect = el(
+    "select",
+    {
+      class: "select",
+      onChange: (e) => {
+        const secs = Number((e.target as HTMLSelectElement).value);
+        void actions.setIdleTimeout(secs);
+      },
+    },
+    ...presets.map((p) => {
+      const opt = el("option", { textContent: p.label });
+      opt.value = String(p.secs);
+      return opt;
+    }),
+  );
+  // Pre-select the current value (setting .value picks the matching <option>).
+  timeoutSelect.value = String(idleTimeout);
+
   body.append(
     el(
       "div",
@@ -47,10 +78,10 @@ export function renderSettings(
           el("div", { class: "label", textContent: "Auto-lock timeout" }),
           el("div", {
             class: "desc",
-            textContent: "The vault locks itself after this much idle time.",
+            textContent: "How long the vault stays unlocked while idle.",
           }),
         ),
-        el("div", { class: "mono", textContent: formatTimeout(idleTimeout) }),
+        timeoutSelect,
       ),
       el(
         "div",
