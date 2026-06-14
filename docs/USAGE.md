@@ -76,36 +76,37 @@ cd Spooky-Pass
 
 ### 3a. The desktop app (the Core)
 
-Use the **Tauri CLI** — it builds the web UI for you and (for `build`) embeds it
-into the executable. Install it once:
+A plain `cargo run`/`cargo build` of the Tauri crate is a **dev** build: it loads
+the UI from the Vite dev server at `http://localhost:1420`. So you run **two
+processes** — the UI server and the app:
 
 ```sh
-cargo install tauri-cli --locked      # or: npm i -g @tauri-apps/cli
+# Terminal 1 — start the UI dev server (serves http://localhost:1420; leave running)
+cd crates/app/ui
+npm install
+npm run dev
+
+# Terminal 2 — run the app (from the repo root)
+cargo run -p spooky-pass-app --release
 ```
 
-Then either **run it in development** (starts the UI dev server *and* the app —
-the quickest way to try it):
-
-```sh
-cargo tauri dev
-```
-
-…or **build a distributable installer** (embeds the UI; the installed app is
-standalone and needs no dev server):
-
-```sh
-cargo tauri build
-# installers land in target/release/bundle/
-#   Windows: msi/*.msi or nsis/*.exe   Linux: deb/ + appimage/   macOS: dmg/
-```
-
-> ⚠️ Don't run `cargo run -p spooky-pass-app` on its own — a plain cargo build is
-> a *dev* build that loads the UI from `http://localhost:1420`, so without the
-> Vite dev server running you'll get a blank "localhost refused to connect" page.
-> Use `cargo tauri dev` (which starts that server) or `cargo tauri build`.
-
-The produced executable is named **`spooky-pass`**
+The app window loads the UI from Terminal 1. If you ever see a blank
+**"localhost refused to connect"** page, the dev server isn't running — start it
+and click **Refresh** in the app window. The executable is named **`spooky-pass`**
 (`target/release/spooky-pass`, `.exe` on Windows).
+
+> **Standalone installer (optional).** The app embeds whatever is in
+> `crates/app/ui/dist`, so build the UI first, then bundle:
+>
+> ```sh
+> cd crates/app/ui && npm run build && cd ../../..   # produce ui/dist
+> cargo install tauri-cli --locked                   # one-time
+> cargo tauri build                                  # installer in target/release/bundle/
+> ```
+>
+> Output: `.msi`/NSIS `.exe` (Windows, under `bundle/msi` / `bundle/nsis`),
+> `.deb`/AppImage (Linux), `.dmg` (macOS). Install it for a standalone app that
+> needs no dev server.
 
 ### 3b. The native-messaging host
 
