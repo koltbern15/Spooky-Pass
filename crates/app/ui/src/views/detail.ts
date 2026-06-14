@@ -6,7 +6,7 @@ import { createActions } from "../actions";
 import type { Actions } from "../actions";
 import type { AppState } from "../store";
 import type { EntryView } from "../types";
-import { copyToClipboard, openUrl } from "../platform";
+import { copyToClipboard, copySecret, openUrl } from "../platform";
 import { renderShell } from "./shell";
 
 function flashCopy(btn: HTMLButtonElement, label: string): void {
@@ -19,13 +19,21 @@ function flashCopy(btn: HTMLButtonElement, label: string): void {
   }, 1200);
 }
 
-function copyButton(label: string, getText: () => string): HTMLButtonElement {
+function copyButton(
+  label: string,
+  getText: () => string,
+  secret = false,
+): HTMLButtonElement {
   const btn = el("button", {
     class: "ghost",
     textContent: label,
     onClick: () => {
       void (async () => {
-        if (await copyToClipboard(getText())) flashCopy(btn, label);
+        // Secrets (passwords) auto-clear from the clipboard a short while later.
+        const ok = secret
+          ? await copySecret(getText())
+          : await copyToClipboard(getText());
+        if (ok) flashCopy(btn, label);
       })();
     },
   });
@@ -137,7 +145,7 @@ function renderEntry(
       { class: "detail-value" },
       pwText,
       revealBtn,
-      copyButton("Copy", () => entry.password),
+      copyButton("Copy", () => entry.password, true),
     ),
   );
 

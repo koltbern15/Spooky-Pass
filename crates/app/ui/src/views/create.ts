@@ -5,6 +5,31 @@
 import { el, clear } from "../dom";
 import { createActions } from "../actions";
 
+const MIN_MASTER_PASSWORD = 8;
+
+interface Strength {
+  label: string;
+  color: string;
+  pct: number;
+}
+
+/** A lightweight, dependency-free master-password strength hint. */
+function passwordStrength(pw: string): Strength {
+  if (pw.length === 0) return { label: "", color: "transparent", pct: 0 };
+  if (pw.length < MIN_MASTER_PASSWORD) {
+    return { label: "Too short", color: "#ff6b6b", pct: 15 };
+  }
+  let score = 0;
+  if (pw.length >= 12) score++;
+  if (pw.length >= 16) score++;
+  if (/[a-z]/.test(pw) && /[A-Z]/.test(pw)) score++;
+  if (/\d/.test(pw)) score++;
+  if (/[^A-Za-z0-9]/.test(pw)) score++;
+  if (score <= 1) return { label: "Weak", color: "#ff8a5b", pct: 35 };
+  if (score <= 3) return { label: "Fair", color: "#ffd27f", pct: 68 };
+  return { label: "Strong", color: "#7cfc9b", pct: 100 };
+}
+
 export function renderCreate(root: HTMLElement): void {
   clear(root);
 
@@ -27,13 +52,44 @@ export function renderCreate(root: HTMLElement): void {
   // Errors from createVault are surfaced inline here.
   const actions = createActions(showError);
 
+  // Live strength meter under the password field.
+  const strengthFill = el("div", {});
+  Object.assign(strengthFill.style, {
+    height: "4px",
+    width: "0%",
+    borderRadius: "2px",
+    background: "transparent",
+    transition: "width 0.15s, background 0.15s",
+  } satisfies Partial<CSSStyleDeclaration>);
+  const strengthBar = el("div", {}, strengthFill);
+  Object.assign(strengthBar.style, {
+    background: "rgba(255,255,255,0.08)",
+    borderRadius: "2px",
+    marginTop: "6px",
+  } satisfies Partial<CSSStyleDeclaration>);
+  const strengthLabel = el("div", {});
+  Object.assign(strengthLabel.style, {
+    fontSize: "11px",
+    marginTop: "3px",
+    minHeight: "14px",
+  } satisfies Partial<CSSStyleDeclaration>);
+
+  const updateStrength = () => {
+    const s = passwordStrength(password);
+    strengthFill.style.width = `${s.pct}%`;
+    strengthFill.style.background = s.color;
+    strengthLabel.textContent = s.label;
+    strengthLabel.style.color = s.color;
+  };
+
   const pwInput = el("input", {
     type: "password",
-    placeholder: "Choose a master password",
+    placeholder: `At least ${MIN_MASTER_PASSWORD} characters`,
     autofocus: true,
     onInput: (e) => {
       password = (e.target as HTMLInputElement).value;
       clearError();
+      updateStrength();
     },
   });
 
@@ -55,8 +111,10 @@ export function renderCreate(root: HTMLElement): void {
   const submit = async () => {
     if (busy) return;
     clearError();
-    if (password.length < 1) {
-      showError("Please choose a master password.");
+    if (password.length < MIN_MASTER_PASSWORD) {
+      showError(
+        `Use at least ${MIN_MASTER_PASSWORD} characters for your master password.`,
+      );
       return;
     }
     if (password !== confirm) {
@@ -95,6 +153,8 @@ export function renderCreate(root: HTMLElement): void {
       { class: "field" },
       el("label", { textContent: "Master password" }),
       pwInput,
+      strengthBar,
+      strengthLabel,
     ),
     el(
       "div",

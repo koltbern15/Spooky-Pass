@@ -3,6 +3,7 @@
 // directly.
 
 import { api } from "./api";
+import { clearClipboard } from "./platform";
 import { store } from "./store";
 import type { Route } from "./store";
 import type {
@@ -145,6 +146,8 @@ export function createActions(onError?: (message: string) => void): Actions {
     },
 
     async lock() {
+      // Wipe any password still pending on the clipboard when we lock.
+      void clearClipboard();
       try {
         const status = await api.lock();
         store.set({ status, route: "unlock", selectedId: null, entries: [] });
