@@ -34,5 +34,12 @@ autofill. One vault, one source of truth.
 
 ## Status
 
-🚧 Early design. See **[DESIGN.md](./DESIGN.md)** for the full architecture,
-threat model, security design, and roadmap.
+🚧 Early development. See **[DESIGN.md](./DESIGN.md)** for the full
+architecture, threat model, security design, and roadmap.
+
+**Phase 1 — `vault-core` (done):** the cryptographic core now exists at
+[`crates/vault-core`](./crates/vault-core). It implements the encrypted vault
+file format, Argon2id key derivation, XChaCha20-Poly1305 AEAD, the
+locked/unlocked typestate with entry CRUD, atomic save, and a CSPRNG-backed
+password generator — all unit- and integration-tested. The desktop app,
+native-messaging host, and browser extension are reserved for later phases.
