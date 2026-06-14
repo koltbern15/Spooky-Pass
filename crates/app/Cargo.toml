@@ -1,0 +1,25 @@
+[package]
+name = "spooky-pass-app"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "The Spooky-Pass desktop application (Tauri shell)."
+
+# The Tauri shell binary. Named `spooky-pass` so the produced executable is
+# `spooky-pass` rather than the crate name.
+[[bin]]
+name = "spooky-pass"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build.workspace = true
+
+[dependencies]
+spooky-pass-app-core = { path = "../app-core" }
+tauri.workspace = true
+tauri-plugin-autostart.workspace = true
+tauri-plugin-opener.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+zeroize.workspace = true

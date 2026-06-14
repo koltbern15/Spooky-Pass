@@ -11,7 +11,7 @@
 #   - extension/          (TypeScript browser extension, Phase 4)
 [workspace]
 resolver = "2"
-members = ["crates/vault-core", "crates/app-core"]
+members = ["crates/vault-core", "crates/app-core", "crates/app"]
 
 [workspace.package]
 edition = "2021"
