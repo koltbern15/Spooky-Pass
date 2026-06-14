@@ -46,6 +46,25 @@ in the tray).
 - **Optional:** the Tauri CLI for one-command dev/bundle:
   `cargo install tauri-cli` (or `npm i -g @tauri-apps/cli`)
 
+### Windows quick-start (winget)
+
+On Windows you do **not** need the Linux `webkit2gtk`/`gtk` packages above —
+just these four (all via `winget` in PowerShell):
+
+```powershell
+winget install Rustlang.Rustup                        # Rust toolchain
+winget install OpenJS.NodeJS.LTS                       # Node.js 22 (current LTS)
+winget install Microsoft.VisualStudio.2022.BuildTools  # then tick "Desktop development with C++"
+winget install Microsoft.EdgeWebView2Runtime           # usually already present on Win 10/11
+```
+
+So on Windows, the entire "Tauri system libraries" requirement is just
+**WebView2 + the MSVC C++ build tools**. Verify your setup with:
+
+```powershell
+rustc --version ; cargo --version ; node --version   # expect node v22.x
+```
+
 ```sh
 git clone https://github.com/koltbern15/Spooky-Pass.git
 cd Spooky-Pass
