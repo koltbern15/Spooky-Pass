@@ -19,6 +19,23 @@ pub const KEY_LEN: usize = 32;
 /// Length of the AEAD authentication tag, in bytes.
 pub const TAG_LEN: usize = 16;
 
+/// Upper bound on Argon2 memory cost (1 GiB, expressed in KiB) accepted when
+/// deriving a key.
+///
+/// KDF parameters are read from the vault header, which is plaintext and not
+/// authenticated until *after* derivation. Without a ceiling, a crafted vault
+/// file could set `m_cost` to its `u32` maximum (~4 TiB) and provoke a huge
+/// allocation inside Argon2 the moment someone tries to unlock it — a
+/// denial-of-service that aborts the process before the password is even
+/// checked. 1 GiB is far above any legitimate setting yet bounds the damage.
+pub const MAX_M_COST_KIB: u32 = 1 << 20;
+
+/// Upper bound on Argon2 time cost (iterations) accepted when deriving a key.
+pub const MAX_T_COST: u32 = 16;
+
+/// Upper bound on Argon2 parallelism (lanes) accepted when deriving a key.
+pub const MAX_P_COST: u32 = 16;
+
 /// Parameters for Argon2id key derivation.
 ///
 /// The defaults match the Spooky-Pass design document: 64 MiB of memory,
@@ -43,6 +60,22 @@ impl Default for KdfParams {
     }
 }
 
+impl KdfParams {
+    /// Reject implausibly expensive parameters before they reach Argon2.
+    ///
+    /// Because header-stored params are attacker-influenceable (they live in
+    /// the not-yet-authenticated plaintext header), an unbounded `m_cost` would
+    /// let a crafted vault provoke a multi-terabyte allocation on unlock. We cap
+    /// all three costs well above any legitimate value; see [`MAX_M_COST_KIB`].
+    fn validate(&self) -> Result<()> {
+        if self.m_cost_kib > MAX_M_COST_KIB || self.t_cost > MAX_T_COST || self.p_cost > MAX_P_COST
+        {
+            return Err(VaultError::InvalidKdfParams);
+        }
+        Ok(())
+    }
+}
+
 /// A 32-byte symmetric key derived from the master password.
 ///
 /// The key is wiped from memory on drop ([`ZeroizeOnDrop`]). It intentionally
@@ -64,6 +97,10 @@ impl DerivedKey {
 /// it; the caller owns the password string and is responsible for zeroizing it
 /// if desired.
 pub fn derive_key(password: &str, salt: &[u8], params: &KdfParams) -> Result<DerivedKey> {
+    // Bound resource use before Argon2 allocates — params may come from an
+    // untrusted vault header (see `KdfParams::validate`).
+    params.validate()?;
+
     let argon2_params = Params::new(
         params.m_cost_kib,
         params.t_cost,
@@ -215,5 +252,56 @@ mod tests {
         assert_eq!(p.m_cost_kib, 65_536);
         assert_eq!(p.t_cost, 3);
         assert_eq!(p.p_cost, 1);
+    }
+
+    #[test]
+    fn derive_key_rejects_excessive_m_cost() {
+        // A hostile header could claim ~4 TiB of memory; reject it *before*
+        // Argon2 tries to allocate, rather than OOM/abort the process.
+        let params = KdfParams {
+            m_cost_kib: u32::MAX,
+            t_cost: 3,
+            p_cost: 1,
+        };
+        // `.map(|_| ())` drops the `DerivedKey` (which has no `Debug`) so
+        // `assert_matches!` can render the result on failure.
+        assert_matches::assert_matches!(
+            derive_key("pw", &[0u8; 16], &params).map(|_| ()),
+            Err(VaultError::InvalidKdfParams)
+        );
+    }
+
+    #[test]
+    fn derive_key_rejects_excessive_time_and_parallelism() {
+        let over_time = KdfParams {
+            t_cost: MAX_T_COST + 1,
+            ..KdfParams::default()
+        };
+        assert_matches::assert_matches!(
+            derive_key("pw", &[0u8; 16], &over_time).map(|_| ()),
+            Err(VaultError::InvalidKdfParams)
+        );
+
+        let over_parallel = KdfParams {
+            p_cost: MAX_P_COST + 1,
+            ..KdfParams::default()
+        };
+        assert_matches::assert_matches!(
+            derive_key("pw", &[0u8; 16], &over_parallel).map(|_| ()),
+            Err(VaultError::InvalidKdfParams)
+        );
+    }
+
+    #[test]
+    fn derive_key_accepts_params_at_the_ceiling() {
+        // At the bound is allowed. Use cheap memory so the high iteration/lane
+        // counts don't make the test slow. Argon2 requires m_cost >= 8*p_cost,
+        // so 256 KiB comfortably satisfies p_cost = 16.
+        let params = KdfParams {
+            m_cost_kib: 256,
+            t_cost: MAX_T_COST,
+            p_cost: MAX_P_COST,
+        };
+        assert!(derive_key("pw", &[0u8; 16], &params).is_ok());
     }
 }

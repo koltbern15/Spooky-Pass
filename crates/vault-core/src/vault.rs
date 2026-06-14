@@ -254,7 +254,19 @@ impl UnlockedVault {
 
         // Scope the file handle so it is closed before the rename.
         let write_result = (|| -> std::io::Result<()> {
-            let mut f = fs::File::create(&tmp_path)?;
+            // Create the temp file owner-only (0600) on Unix so the vault is
+            // never momentarily world-readable. The mode is preserved across the
+            // rename, so the final vault file is 0600 too. `umask` only clears
+            // bits, and 0600 has no group/other bits, so it survives any sane
+            // umask. On non-Unix we fall back to the default create mode.
+            let mut opts = fs::OpenOptions::new();
+            opts.write(true).create_new(true);
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::OpenOptionsExt;
+                opts.mode(0o600);
+            }
+            let mut f = opts.open(&tmp_path)?;
             f.write_all(&bytes)?;
             f.flush()?;
             f.sync_all()?;

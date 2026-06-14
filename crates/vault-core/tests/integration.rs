@@ -76,6 +76,23 @@ fn unlock_with_tampered_body_returns_wrong_password() {
     );
 }
 
+#[test]
+fn unlock_rejects_excessive_kdf_params() {
+    // Tamper the plaintext m_cost field to a hostile ~4 TiB value. Unlock must
+    // reject it (InvalidKdfParams) *before* Argon2 allocates, rather than
+    // attempting a giant allocation that would abort the process. The header is
+    // structurally valid, so decode/open succeeds and the guard fires at derive.
+    let vault = LockedVault::create(PW, KdfParams::default()).unwrap();
+    let mut bytes = vault.to_bytes().unwrap();
+    // m_cost_kib lives at header offset 8 (u32, little-endian).
+    bytes[8..12].copy_from_slice(&u32::MAX.to_le_bytes());
+    let locked = LockedVault::open_from_bytes(&bytes).unwrap();
+    assert_matches!(
+        UnlockedVault::unlock(&locked, PW),
+        Err(VaultError::InvalidKdfParams)
+    );
+}
+
 // ---- Entry CRUD --------------------------------------------------------------
 
 #[test]
@@ -247,6 +264,23 @@ fn save_to_path_overwrites_atomically() {
     let locked = LockedVault::open_from_path(&path).unwrap();
     let reopened = UnlockedVault::unlock(&locked, PW).unwrap();
     assert_eq!(reopened.list_entries()[0].title, "second");
+}
+
+#[cfg(unix)]
+#[test]
+fn save_to_path_creates_owner_only_file() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("vault.spk");
+
+    let vault = LockedVault::create(PW, KdfParams::default()).unwrap();
+    vault.save_to_path(&path).unwrap();
+
+    // The vault may contain credentials, so it must not be readable by other
+    // local users (the "copied vault file" threat in DESIGN.md).
+    let mode = std::fs::metadata(&path).unwrap().permissions().mode();
+    assert_eq!(mode & 0o777, 0o600, "vault file must be owner-only (0600)");
 }
 
 #[test]
