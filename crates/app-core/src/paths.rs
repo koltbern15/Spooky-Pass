@@ -81,3 +81,18 @@ pub fn autofill_socket_path() -> PathBuf {
 
     base.join(AUTOFILL_SOCKET_NAME)
 }
+
+/// The base name of the **Windows named pipe** used for the autofill IPC leg.
+///
+/// On Unix the IPC endpoint is a filesystem socket ([`autofill_socket_path`]);
+/// on Windows, AF_UNIX socket paths are unreliable, so the Core and the
+/// native-host rendezvous on a named pipe instead (the OS maps this to
+/// `\\.\pipe\<name>`). The name is per-user so two accounts on one machine
+/// don't collide, and both ends derive it from this single function so they
+/// always agree.
+pub fn autofill_pipe_name() -> String {
+    let user = std::env::var("USERNAME")
+        .or_else(|_| std::env::var("USER"))
+        .unwrap_or_else(|_| "user".to_string());
+    format!("spooky-pass-{user}.sock")
+}

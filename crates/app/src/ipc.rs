@@ -29,9 +29,11 @@ use std::io::{self, Read, Write};
 use std::thread;
 
 use app_core::{AppError, AppState, IpcRequest, IpcResponse};
-use interprocess::local_socket::{
-    prelude::*, GenericFilePath, ListenerOptions, Stream as LocalStream,
-};
+#[cfg(unix)]
+use interprocess::local_socket::GenericFilePath;
+#[cfg(windows)]
+use interprocess::local_socket::GenericNamespaced;
+use interprocess::local_socket::{prelude::*, ListenerOptions, Stream as LocalStream};
 use tauri::{AppHandle, Manager, Runtime};
 
 /// Maximum accepted request frame: 1 MiB, matching the native-host codec so the
@@ -63,16 +65,22 @@ pub fn spawn<R: Runtime>(app: &AppHandle<R>) {
 
 /// Bind the listener and serve connections until the process exits.
 fn serve<R: Runtime>(app: AppHandle<R>) -> io::Result<()> {
-    let socket_path = app_core::autofill_socket_path();
-
-    // A stale socket file from a previous crash would make `bind` fail; remove it
-    // first (best effort — a live owner is handled by `try_overwrite` below).
+    // Build the platform-appropriate local-socket name. Unix uses a filesystem
+    // socket (so we can fchmod it 0600 and remove a stale one left by a crash);
+    // Windows uses a named pipe, since AF_UNIX socket *paths* are unreliable
+    // there. Both ends derive the same name from `app-core`.
     #[cfg(unix)]
-    let _ = std::fs::remove_file(&socket_path);
-
-    let name = socket_path
-        .clone()
-        .to_fs_name::<GenericFilePath>()
+    let name = {
+        let socket_path = app_core::autofill_socket_path();
+        // A stale socket file from a previous crash would make `bind` fail.
+        let _ = std::fs::remove_file(&socket_path);
+        socket_path
+            .to_fs_name::<GenericFilePath>()
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?
+    };
+    #[cfg(windows)]
+    let name = app_core::autofill_pipe_name()
+        .to_ns_name::<GenericNamespaced>()
         .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
 
     let opts = ListenerOptions::new().name(name);

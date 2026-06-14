@@ -46,7 +46,7 @@ pub use dto::{
     EntryInput, EntryPatchInput, EntrySummary, EntryView, GeneratorOptionsDto, StatusDto,
 };
 pub use error::{AppError, Result};
-pub use paths::{autofill_socket_path, resolve_vault_path};
+pub use paths::{autofill_pipe_name, autofill_socket_path, resolve_vault_path};
 pub use state::AppState;
 
 pub use autofill::contract::{
