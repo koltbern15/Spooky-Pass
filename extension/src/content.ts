@@ -203,34 +203,35 @@ function attachFocusListeners(root: Document): void {
 
 async function onFieldFocus(form: LoginForm): Promise<void> {
   activeForm = form;
-  // Ask the Core (via background) what matches the TOP-LEVEL page URL. The
-  // content script never computes registrable domains — it just sends the URL.
-  const resp = await send({ kind: "getMatches", url: topLevelUrl() });
 
+  // Check lock state FIRST. When the vault is locked the Core returns no
+  // matches, so we can't learn whether this site has a saved login — but we
+  // still want to offer to unlock on a login page (when a vault exists).
+  const status = await send({ kind: "getStatus" });
+  if (status.coreUnavailable) {
+    renderAffordance(form, { kind: "core-unavailable" });
+    return;
+  }
+  if (status.ok && status.kind === "status" && !status.status.unlocked) {
+    if (status.status.hasVault) {
+      renderAffordance(form, { kind: "locked" });
+    } else {
+      // No vault yet — nothing to unlock or fill; don't nag.
+      removeAffordance();
+    }
+    return;
+  }
+
+  // Unlocked: ask the Core what matches the TOP-LEVEL page URL. The content
+  // script never computes registrable domains — it just sends the URL.
+  const resp = await send({ kind: "getMatches", url: topLevelUrl() });
   if (resp.coreUnavailable) {
     renderAffordance(form, { kind: "core-unavailable" });
     return;
   }
-  if (!resp.ok) {
-    // Quietly skip on other errors; do not nag.
+  if (!resp.ok || resp.kind !== "matches" || resp.matches.length === 0) {
+    // No match (or a transient error): don't nag.
     removeAffordance();
-    return;
-  }
-  if (resp.kind !== "matches") return;
-
-  if (resp.matches.length === 0) {
-    removeAffordance();
-    return;
-  }
-
-  // Confirm lock state before offering to fill.
-  const status = await send({ kind: "getStatus" });
-  if (status.ok && status.kind === "status" && !status.status.unlocked) {
-    renderAffordance(form, { kind: "locked" });
-    return;
-  }
-  if (status.coreUnavailable) {
-    renderAffordance(form, { kind: "core-unavailable" });
     return;
   }
 
