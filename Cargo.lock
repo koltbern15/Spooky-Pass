@@ -3378,6 +3378,8 @@ dependencies = [
 name = "spooky-pass-app"
 version = "0.1.0"
 dependencies = [
+ "interprocess",
+ "libc",
  "serde",
  "serde_json",
  "spooky-pass-app-core",

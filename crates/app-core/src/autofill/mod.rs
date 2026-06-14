@@ -8,8 +8,13 @@
 //!
 //! * [`contract`] — the frozen IPC / native-messaging message types, mirrored
 //!   by `extension/src/protocol.ts`.
-//! * The matching methods on [`crate::AppState`] (`find_matches`,
-//!   `get_credential`, `autofill_status`) are added by the Phase 3 backend
-//!   implementation.
+//! * `matching` — the registrable-domain decision logic, adding the
+//!   `find_matches`, `get_credential`, and `autofill_status` methods to
+//!   [`crate::AppState`].
 
 pub mod contract;
+
+// Adds the registrable-domain matching methods (`find_matches`,
+// `get_credential`, `autofill_status`) to `crate::AppState`. Exports no new
+// types of its own.
+mod matching;

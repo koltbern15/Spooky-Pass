@@ -54,6 +54,9 @@ tauri-plugin-opener = "2"
 psl = "2.1"
 url = "2.5"
 interprocess = "2"
+# Only the Core (crates/app) uses this, to set the autofill socket's Unix file
+# mode to 0600 (owner-only). Already in the tree transitively via interprocess.
+libc = "0.2"
 
 # Dev-only dependencies, also pinned at the workspace level.
 assert_matches = "1.5"

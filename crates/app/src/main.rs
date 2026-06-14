@@ -6,8 +6,9 @@
 //!   the real [`SystemClock`] and a 15-minute idle timeout;
 //! * register the autostart + opener plugins;
 //! * expose the `#[tauri::command]` surface (see [`commands`]);
-//! * stand up the tray icon (see [`tray`]) and spawn the idle auto-lock driver
-//!   (see [`autolock_driver`]);
+//! * stand up the tray icon (see [`tray`]), spawn the idle auto-lock driver
+//!   (see [`autolock_driver`]), and start the autofill IPC server the browser
+//!   native-host relays to (see [`ipc`]);
 //! * keep the app resident: closing the main window *hides* it instead of
 //!   exiting, so the Core stays available for browser autofill.
 //!
@@ -19,6 +20,7 @@
 
 mod autolock_driver;
 mod commands;
+mod ipc;
 mod tray;
 
 use std::time::Duration;
@@ -58,6 +60,9 @@ fn main() {
             let handle = app.handle();
             tray::build(handle)?;
             autolock_driver::spawn(handle);
+            // Stand up the local-socket IPC server the browser native-host relays
+            // to (shares the same managed AppState as the GUI commands).
+            ipc::spawn(handle);
             Ok(())
         })
         .on_window_event(|window, event| {
