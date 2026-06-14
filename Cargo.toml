@@ -1,0 +1,36 @@
+# Virtual workspace manifest for Spooky-Pass.
+#
+# Phase 1 ships only `crates/vault-core`. The following members are reserved
+# for later phases and intentionally NOT created yet:
+#   - crates/app          (Tauri desktop GUI + Core, Phase 2)
+#   - crates/native-host  (native messaging host shim, Phase 3)
+#   - extension/          (TypeScript browser extension, Phase 4)
+[workspace]
+resolver = "2"
+members = ["crates/vault-core"]
+
+[workspace.package]
+edition = "2021"
+license = "MIT OR Apache-2.0"
+rust-version = "1.74"
+
+# Shared, pinned dependency versions. Member crates reference these via
+# `<dep>.workspace = true` so the whole workspace stays on one set of versions.
+#
+# NOTE: We deliberately use the latest STABLE lines of argon2 and
+# chacha20poly1305 (NOT their pre-release RCs). Both share the
+# rand_core 0.6 / getrandom 0.2 ecosystem, giving us a single `OsRng`.
+[workspace.dependencies]
+argon2 = "0.5.3"
+chacha20poly1305 = { version = "0.10.1", features = ["std"] }
+zeroize = { version = "1", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+rand_core = { version = "0.6", features = ["getrandom"] }
+getrandom = "0.2"
+thiserror = "2"
+
+# Dev-only dependencies, also pinned at the workspace level.
+assert_matches = "1.5"
+hex = "0.4"
+tempfile = "3"

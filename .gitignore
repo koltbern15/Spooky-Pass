@@ -1,0 +1,5 @@
+# Rust build artifacts
+/target/
+
+# Cargo.lock IS committed for this workspace (it ships application/binary
+# crates and we want reproducible builds), so it is intentionally NOT ignored.
