@@ -18,6 +18,9 @@ zeroize.workspace = true
 thiserror.workspace = true
 time.workspace = true
 directories.workspace = true
+# Phase 3 (autofill matching): authoritative eTLD+1 matching lives here.
+psl.workspace = true
+url.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true

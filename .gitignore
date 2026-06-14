@@ -10,3 +10,7 @@ crates/app/ui/dist/
 
 # Tauri generated files
 crates/app/gen/
+
+# Browser extension build artifacts and dependencies
+extension/node_modules/
+extension/dist/
