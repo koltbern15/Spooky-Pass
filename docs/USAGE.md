@@ -264,6 +264,14 @@ to a new machine, copy `vault.spk` into the same data directory there.
   correct absolute `path` and you restarted the browser after installing it.
 - **"Core not running" in the button.** Start the desktop app (it must be running
   for the browser to reach the vault).
+- **(Windows) `Access is denied (os error 5)` in the button.** The desktop app is
+  running **elevated** (as Administrator) while the browser runs as your normal
+  user, so Windows blocks the connection. Quit the app and relaunch it
+  **non-elevated** (double-click the `.exe` in Explorer, or install + run the
+  bundle) — don't start it from an "Administrator" terminal.
+- **(Windows/Brave) `Specified native messaging host not found`.** Brave reads the
+  **`Google\Chrome`** native-messaging registry path, not its own — register the
+  host under that key too (see §4b) and fully restart Brave.
 - **"Unlock Spooky-Pass" button.** The vault auto-locked — unlock it in the app.
 - **Autofill stopped after moving the host binary.** The path is baked into the
   host manifest; update `"path"` and restart the browser.
