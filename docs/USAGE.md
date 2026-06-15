@@ -162,9 +162,23 @@ autofill stays available. Quit fully from the tray menu.
    | **Brave** | `~/.config/BraveSoftware/Brave-Browser/NativeMessagingHosts/` | `~/Library/Application Support/BraveSoftware/Brave-Browser/NativeMessagingHosts/` |
    | **Vivaldi** | `~/.config/vivaldi/NativeMessagingHosts/` | `~/Library/Application Support/Vivaldi/NativeMessagingHosts/` |
 
-   On **Windows**, place the JSON anywhere and register its path under
-   `HKCU\Software\<Browser>\NativeMessagingHosts\com.spooky_pass.host` (see
-   `extension/README.md` for the exact keys).
+   On **Windows**, place the JSON anywhere and register its **absolute path** as
+   the default value of a registry key. PowerShell (adjust the manifest path):
+
+   ```powershell
+   $m = "$env:APPDATA\SpookyPass\com.spooky_pass.host.json"   # your manifest
+   foreach ($b in "BraveSoftware\Brave-Browser","Google\Chrome","Vivaldi") {
+     New-Item -Path "HKCU:\Software\$b\NativeMessagingHosts\com.spooky_pass.host" -Force | Out-Null
+     Set-ItemProperty -Path "HKCU:\Software\$b\NativeMessagingHosts\com.spooky_pass.host" -Name '(default)' -Value $m
+   }
+   ```
+
+   > ⚠️ **Brave gotcha:** despite branding, Brave on Windows reads native-messaging
+   > registrations from the **`Google\Chrome`** registry path, *not*
+   > `BraveSoftware\Brave-Browser`. Registering under all three (above) covers
+   > Brave, Chrome, and Vivaldi. After editing the registry, **fully restart the
+   > browser** (`taskkill /IM brave.exe /F`) and reload the extension.
+
 
 ### 4c. Load the extension
 
