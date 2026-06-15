@@ -4,10 +4,7 @@
   "version": "0.1.0",
   "identifier": "dev.SpookyPass.SpookyPass",
   "build": {
-    "beforeBuildCommand": "npm run build",
-    "beforeDevCommand": "npm run dev",
-    "frontendDist": "ui/dist",
-    "devUrl": "http://localhost:1420"
+    "frontendDist": "ui/dist"
   },
   "app": {
     "windows": [
@@ -37,7 +34,8 @@
     "active": true,
     "targets": "all",
     "icon": [
-      "icons/icon.png"
+      "icons/icon.png",
+      "icons/icon.ico"
     ]
   },
   "plugins": {}

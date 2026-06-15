@@ -163,9 +163,11 @@ where
 /// A fresh Core connection is made per request; if the Core is down, each
 /// request simply gets a `coreUnavailable` reply and the loop keeps serving.
 pub fn run() -> Result<(), RelayError> {
-    use interprocess::local_socket::{prelude::*, GenericFilePath, Stream as LocalStream};
-
-    let socket_path = app_core::autofill_socket_path();
+    #[cfg(unix)]
+    use interprocess::local_socket::GenericFilePath;
+    #[cfg(windows)]
+    use interprocess::local_socket::GenericNamespaced;
+    use interprocess::local_socket::{prelude::*, Stream as LocalStream};
 
     let stdin = io::stdin();
     let stdout = io::stdout();
@@ -175,12 +177,17 @@ pub fn run() -> Result<(), RelayError> {
     let output = stdout.lock();
 
     run_loop(input, output, move || {
-        // Build the local-socket name from the shared path and connect. A
-        // missing/refused socket surfaces here as an io::Error, which the relay
+        // Build the local-socket name (matching the Core's) and connect. On Unix
+        // that's the filesystem socket path; on Windows, the named pipe. A
+        // missing/refused endpoint surfaces here as an io::Error, which the relay
         // turns into a `coreUnavailable` reply.
-        let name = socket_path
-            .clone()
+        #[cfg(unix)]
+        let name = app_core::autofill_socket_path()
             .to_fs_name::<GenericFilePath>()
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
+        #[cfg(windows)]
+        let name = app_core::autofill_pipe_name()
+            .to_ns_name::<GenericNamespaced>()
             .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
         LocalStream::connect(name)
     })

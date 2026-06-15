@@ -29,9 +29,11 @@ use std::io::{self, Read, Write};
 use std::thread;
 
 use app_core::{AppError, AppState, IpcRequest, IpcResponse};
-use interprocess::local_socket::{
-    prelude::*, GenericFilePath, ListenerOptions, Stream as LocalStream,
-};
+#[cfg(unix)]
+use interprocess::local_socket::GenericFilePath;
+#[cfg(windows)]
+use interprocess::local_socket::GenericNamespaced;
+use interprocess::local_socket::{prelude::*, ListenerOptions, Stream as LocalStream};
 use tauri::{AppHandle, Manager, Runtime};
 
 /// Maximum accepted request frame: 1 MiB, matching the native-host codec so the
@@ -61,19 +63,54 @@ pub fn spawn<R: Runtime>(app: &AppHandle<R>) {
         });
 }
 
+/// Append a line to a best-effort diagnostic log beside the vault
+/// (`<data_dir>/ipc.log`). A release build on Windows has no console, so this is
+/// how IPC startup problems become visible after the fact.
+fn ipc_log(msg: &str) {
+    use std::io::Write;
+    let Some(dir) = app_core::autofill_socket_path()
+        .parent()
+        .map(|p| p.to_path_buf())
+    else {
+        return;
+    };
+    let _ = std::fs::create_dir_all(&dir);
+    if let Ok(mut f) = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(dir.join("ipc.log"))
+    {
+        let _ = writeln!(f, "{msg}");
+    }
+}
+
 /// Bind the listener and serve connections until the process exits.
 fn serve<R: Runtime>(app: AppHandle<R>) -> io::Result<()> {
-    let socket_path = app_core::autofill_socket_path();
-
-    // A stale socket file from a previous crash would make `bind` fail; remove it
-    // first (best effort — a live owner is handled by `try_overwrite` below).
+    // Build the platform-appropriate local-socket name plus a human description
+    // for the diagnostic log. Unix uses a filesystem socket (so we can fchmod it
+    // 0600 and remove a stale one left by a crash); Windows uses a named pipe,
+    // since AF_UNIX socket *paths* are unreliable there.
     #[cfg(unix)]
-    let _ = std::fs::remove_file(&socket_path);
+    let (name, desc) = {
+        let socket_path = app_core::autofill_socket_path();
+        let _ = std::fs::remove_file(&socket_path);
+        let desc = format!("unix socket {}", socket_path.display());
+        let name = socket_path
+            .to_fs_name::<GenericFilePath>()
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
+        (name, desc)
+    };
+    #[cfg(windows)]
+    let (name, desc) = {
+        let pipe = app_core::autofill_pipe_name();
+        let desc = format!(r"named pipe \\.\pipe\{pipe}");
+        let name = pipe
+            .to_ns_name::<GenericNamespaced>()
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
+        (name, desc)
+    };
 
-    let name = socket_path
-        .clone()
-        .to_fs_name::<GenericFilePath>()
-        .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
+    ipc_log(&format!("autofill IPC: binding {desc}"));
 
     let opts = ListenerOptions::new().name(name);
     // Owner-only permissions on Unix (fchmod before bind, no umask race).
@@ -83,7 +120,16 @@ fn serve<R: Runtime>(app: AppHandle<R>) -> io::Result<()> {
         opts.mode(SOCKET_MODE)
     };
 
-    let listener = opts.create_sync()?;
+    let listener = match opts.create_sync() {
+        Ok(listener) => {
+            ipc_log("autofill IPC: listening");
+            listener
+        }
+        Err(e) => {
+            ipc_log(&format!("autofill IPC: bind FAILED: {e}"));
+            return Err(e);
+        }
+    };
 
     // Serve one connection at a time. The native-host opens a fresh connection
     // per request, so connections are short-lived; a sequential accept loop is

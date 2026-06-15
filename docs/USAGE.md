@@ -46,6 +46,25 @@ in the tray).
 - **Optional:** the Tauri CLI for one-command dev/bundle:
   `cargo install tauri-cli` (or `npm i -g @tauri-apps/cli`)
 
+### Windows quick-start (winget)
+
+On Windows you do **not** need the Linux `webkit2gtk`/`gtk` packages above —
+just these four (all via `winget` in PowerShell):
+
+```powershell
+winget install Rustlang.Rustup                        # Rust toolchain
+winget install OpenJS.NodeJS.LTS                       # Node.js 22 (current LTS)
+winget install Microsoft.VisualStudio.2022.BuildTools  # then tick "Desktop development with C++"
+winget install Microsoft.EdgeWebView2Runtime           # usually already present on Win 10/11
+```
+
+So on Windows, the entire "Tauri system libraries" requirement is just
+**WebView2 + the MSVC C++ build tools**. Verify your setup with:
+
+```powershell
+rustc --version ; cargo --version ; node --version   # expect node v22.x
+```
+
 ```sh
 git clone https://github.com/koltbern15/Spooky-Pass.git
 cd Spooky-Pass
@@ -57,23 +76,35 @@ cd Spooky-Pass
 
 ### 3a. The desktop app (the Core)
 
-The frontend must be built first; Tauri embeds it.
+Build the web UI once, then run the app — it loads the built UI **directly** (no
+dev server needed):
 
 ```sh
-# build the web UI
+# build the UI into crates/app/ui/dist
 cd crates/app/ui
 npm install
-npm run build          # produces crates/app/ui/dist/
+npm run build
 cd ../../..
 
-# build the app
-#   with the Tauri CLI (recommended — also produces installers):
-cargo tauri build      # bundles land in target/release/bundle/
-#   …or a plain dev build/run without the CLI (dist/ must already exist):
+# build + run the app (loads the ui/dist you just built)
 cargo run -p spooky-pass-app --release
 ```
 
-The executable is named **`spooky-pass`** (`target/release/spooky-pass`).
+The window opens straight to the Create-vault / Unlock screen. The executable is
+named **`spooky-pass`** (`target/release/spooky-pass`, `.exe` on Windows). If you
+change the UI, re-run `npm run build` and relaunch.
+
+> **Standalone installer (optional).** The app embeds whatever is in
+> `crates/app/ui/dist`, so build the UI first, then bundle:
+>
+> ```sh
+> cd crates/app/ui && npm run build && cd ../../..   # produce ui/dist
+> cargo install tauri-cli --locked                   # one-time
+> cargo tauri build                                  # installer in target/release/bundle/
+> ```
+>
+> Output: `.msi`/NSIS `.exe` (Windows, under `bundle/msi` / `bundle/nsis`),
+> `.deb`/AppImage (Linux), `.dmg` (macOS). Install it for a standalone app.
 
 ### 3b. The native-messaging host
 
@@ -105,10 +136,17 @@ cd ..
 
 ### 4a. Run the desktop app
 
-Launch `spooky-pass` (the binary from 3a, or the installed bundle). It opens the
-main window and adds a 🦇 **tray icon** (Open / Lock now / Quit). Closing the
-window **hides it to the tray** — the Core keeps running so autofill stays
-available. Quit fully from the tray menu.
+Launch it with **`cargo run -p spooky-pass-app --release`** (or run the
+`spooky-pass` binary directly), or — for everyday use — **install the bundle**
+from `cargo tauri build` (the `.msi`/`.exe` under `target/release/bundle/`) and
+start it from the Start menu / Applications. Either way it opens the main window
+and adds a 🦇 **tray icon** (Open / Lock now / Quit). Closing the window **hides
+it to the tray** — the Core keeps running so autofill stays available. Quit fully
+from the tray menu.
+
+> **(Windows)** Run it **non-elevated** (not from an "Administrator" terminal) —
+> the browser runs as your normal user, and a higher-privilege Core's pipe will
+> reject it with `Access is denied`. See §8.
 
 ### 4b. Install the native-messaging host
 
@@ -123,9 +161,23 @@ available. Quit fully from the tray menu.
    | **Brave** | `~/.config/BraveSoftware/Brave-Browser/NativeMessagingHosts/` | `~/Library/Application Support/BraveSoftware/Brave-Browser/NativeMessagingHosts/` |
    | **Vivaldi** | `~/.config/vivaldi/NativeMessagingHosts/` | `~/Library/Application Support/Vivaldi/NativeMessagingHosts/` |
 
-   On **Windows**, place the JSON anywhere and register its path under
-   `HKCU\Software\<Browser>\NativeMessagingHosts\com.spooky_pass.host` (see
-   `extension/README.md` for the exact keys).
+   On **Windows**, place the JSON anywhere and register its **absolute path** as
+   the default value of a registry key. PowerShell (adjust the manifest path):
+
+   ```powershell
+   $m = "$env:APPDATA\SpookyPass\com.spooky_pass.host.json"   # your manifest
+   foreach ($b in "BraveSoftware\Brave-Browser","Google\Chrome","Vivaldi") {
+     New-Item -Path "HKCU:\Software\$b\NativeMessagingHosts\com.spooky_pass.host" -Force | Out-Null
+     Set-ItemProperty -Path "HKCU:\Software\$b\NativeMessagingHosts\com.spooky_pass.host" -Name '(default)' -Value $m
+   }
+   ```
+
+   > ⚠️ **Brave gotcha:** despite branding, Brave on Windows reads native-messaging
+   > registrations from the **`Google\Chrome`** registry path, *not*
+   > `BraveSoftware\Brave-Browser`. Registering under all three (above) covers
+   > Brave, Chrome, and Vivaldi. After editing the registry, **fully restart the
+   > browser** (`taskkill /IM brave.exe /F`) and reload the extension.
+
 
 ### 4c. Load the extension
 
@@ -211,6 +263,14 @@ to a new machine, copy `vault.spk` into the same data directory there.
   correct absolute `path` and you restarted the browser after installing it.
 - **"Core not running" in the button.** Start the desktop app (it must be running
   for the browser to reach the vault).
+- **(Windows) `Access is denied (os error 5)` in the button.** The desktop app is
+  running **elevated** (as Administrator) while the browser runs as your normal
+  user, so Windows blocks the connection. Quit the app and relaunch it
+  **non-elevated** (double-click the `.exe` in Explorer, or install + run the
+  bundle) — don't start it from an "Administrator" terminal.
+- **(Windows/Brave) `Specified native messaging host not found`.** Brave reads the
+  **`Google\Chrome`** native-messaging registry path, not its own — register the
+  host under that key too (see §4b) and fully restart Brave.
 - **"Unlock Spooky-Pass" button.** The vault auto-locked — unlock it in the app.
 - **Autofill stopped after moving the host binary.** The path is baked into the
   host manifest; update `"path"` and restart the browser.
